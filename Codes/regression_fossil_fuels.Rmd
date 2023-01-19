@@ -1,0 +1,54 @@
+---
+title: "Untitled"
+author: "Shouvik"
+date: '2022-12-08'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+fossil_fuel <- read_csv("fossil-fuel-primary-energy.csv")
+
+colnames(fossil_fuel) <- c('ID','Country','Code','Year','Amount_in_TWh')
+
+fossil_fuel_india <- fossil_fuel %>% filter(Country %in% c("India")) %>% select(,c('Year','Amount_in_TWh'))
+head(fossil_fuel_india)
+plot(fossil_fuel_india$Year,fossil_fuel_india$Amount_in_TWh)
+```
+
+
+```{r}
+x <- fossil_fuel_india$Amount_in_TWh
+y <- fossil_fuel_india$Year
+relation <- lm(y~x)
+
+
+# Plot the chart.
+plot(y,x,col = "blue",main = "Amount_in_Twh & year Regression",
+abline(lm(x~y)),cex = 1.3,pch = 16,xlab = "Year",ylab = "Amount_in_TWh")
+
+
+```
+
+
+```{r}
+summary(relation)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

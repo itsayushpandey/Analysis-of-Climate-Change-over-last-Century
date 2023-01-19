@@ -1,0 +1,230 @@
+---
+title: "Regression_stat"
+author: "Ayush Pandey"
+date: "2022-12-07"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+#loading dataset
+data=read_csv("temp_country_2020.csv")
+head(data)
+
+unique((data %>% filter(Year == 2000))['Date']) # Shows that there is only monthly data available not daily.
+
+#summary of the dataset
+summary(data)
+
+#checking for NA values
+nadate=sum(is.na(data["Date"]))
+nacountry=sum(is.na(data["Country"]))
+namonth=sum(is.na(data["Month"]))
+nayear=sum(is.na(data["Year"]))
+natemp=sum(is.na(data["Temp"]))
+namonth
+nayear
+natemp
+nacountry
+nadate
+
+#### Above data values show that the table is clean and not needing any more cleaning.
+
+### Step 2: Gather some country specific info for last century 1900-2019 and add columns. To assess trends across countries let us divide them into 3 buckets and assess each to see the impact instead of assessing on all 38 countries in dataset.
+
+# Gather some country specific info for last century
+fun <- function(x) {
+  if (x < 10) {
+    "Low"
+  }
+  else if (x < 20) {
+    "Medium"
+  }
+  else {
+    "High"
+  }
+}
+
+mean_countries <- data %>% group_by(Country) %>%
+  summarize(mean_monthly_1900_2019 = mean(Temp), 
+            min_monthly_1900_2019 = min(Temp), 
+            max_monthly_1900_2019 = max(Temp),
+            temp_category = factor(fun(mean_monthly_1900_2019), levels = c("Low", "Medium", "High"))) 
+
+print('Low category countries')
+print((mean_countries %>% filter(temp_category == "Low") %>% count())$n)
+
+print('Medium category countries')
+print((mean_countries %>% filter(temp_category == "Medium") %>% count())$n)
+
+print('High category countries')
+print((mean_countries %>% filter(temp_category == "High") %>% count())$n)
+
+head(mean_countries)
+
+### Step 3: Load some info for each country and year such as annual min, max, range, mean
+
+data_country <- data %>% 
+  group_by(Country, Year) %>%
+  summarize(mean_monthly = mean(Temp), 
+            min_monthly = min(Temp), 
+            max_monthly = max(Temp))
+
+data_country <- inner_join(data_country, mean_countries)
+head(data_country)
+
+# Let us find the country for maximum and min average temperatures in last years
+temp_data <- data %>% 
+  group_by(Country) %>%
+  summarize(mean_temp = mean(Temp))
+
+temp_data[which.max(temp_data$mean_temp),]
+temp_data[which.min(temp_data$mean_temp),]
+
+uae_temp  <- data %>% 
+  filter(Country == 'United Arab Emirates') %>%
+  group_by(Year) %>%
+  summarize(mean_temp = mean(Temp))
+
+iceland_temp  <- data %>% filter(Country == 'Iceland') %>%
+  group_by(Year) %>%
+  summarize(mean_temp = mean(Temp))
+
+head(uae_temp)
+head(iceland_temp)
+
+data_country %>%
+  filter(temp_category == "High") %>%
+  ggplot(aes(x = Country, y = mean_monthly, color = Country)) + 
+  geom_boxplot() +
+  xlab("Mean monthly temperatures") +
+  ylab("Box plot for countries") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+#### Above graph shows outliers for Venezeula but the values are not wrong as printed below.
+
+data_venezuela <- data_country %>% filter(Country == 'Venezuela')
+data_venezuela[which.min(data_venezuela$mean_monthly),]
+data_venezuela[which.max(data_venezuela$mean_monthly),]
+
+data_country %>%
+  filter(temp_category == "Medium") %>%
+  ggplot(aes(x = Year, y = mean_monthly, color = Country)) + geom_smooth()
+
+data_country %>%
+  filter(temp_category == "Low") %>%
+  ggplot(aes(x = Year, y = mean_monthly, color = Country)) + geom_point()
+
+## Above 3 graphs shows that all category of countries based on temperature buckets are showing consistently increasing temperatures across years.
+
+### Let us now see for India
+
+#Analysis for India, shows the increase in Average mean temperature over the years
+data_country %>%
+  filter(Country == "India") %>%
+  ggplot(aes(x = Year, y = mean_monthly, color = Country)) + geom_line()
+
+# Analysis for United Arab Emirates as it has the maximum mean temperature from 1900-2019
+
+temp_data <- data %>% 
+  group_by(Country) %>%
+  summarize(mean_temp = mean(Temp))
+temp_data[which.max(temp_data$mean_temp),]
+temp_data[which.min(temp_data$mean_temp),]
+
+uae_temp  <- data %>% 
+  filter(Country == 'United Arab Emirates') %>%
+  group_by(Year) %>%
+  summarize(mean_temp = mean(Temp))   
+
+
+print(uae_temp)
+ggplot(data=uae_temp, aes(x=Year,y=mean_temp,color=Year)) + geom_line() + ylab("Mean temperatures for UAE")
+
+# Analysis for Iceland as it has the minimum mean temperature from 1900-2019
+
+print(iceland_temp)
+ggplot(data=iceland_temp, aes(x=Year, y=mean_temp, color=Year)) + geom_line() + ylab("Mean temperatures for Iceland")
+
+
+## Let us examine the annual averages and min/max temperatures variations
+
+#Below we can see that all averages and max temperatures are increasing constantly across years.
+
+
+global_land_temp <- data %>% group_by(Year) %>%
+  summarize(global_temp = mean(Temp), min_global_temp = min(Temp), max_global_temp = max(Temp))
+global_land_temp
+
+global_land_temp[which.min(global_land_temp$min_global_temp),]
+
+
+ggplot(data=global_land_temp,aes(x=Year,y=global_temp,color=global_temp))+geom_line()
+
+ggplot(data=global_land_temp,aes(x=Year,y=max_global_temp,color=max_global_temp))+geom_line()
+
+#### The extreme winter average in graph is from Polar vortex year 2014 in graph below
+
+ggplot(data=global_land_temp,aes(x=Year,y=min_global_temp,color=min_global_temp))+geom_line()
+
+## Let us examine the change in temperatures across years for each month.
+
+monthly_averages <- data %>%
+  group_by(Year, Month) %>%
+  summarize(mean_monthly = mean(Temp), min_monthly = min(Temp), max_monthly = max(Temp))
+head(monthly_averages)
+
+monthly_averages %>%
+  ggplot(aes(x = Year, y = mean_monthly, color = factor(Month))) +
+  geom_smooth()
+
+monthly_averages %>%
+  ggplot(aes(x = Year, y = max_monthly, color = factor(Month))) +
+  geom_smooth()
+
+### Above graph shows that except for the season changing months of May and November all months have average temperatures increasing in the last 119 years and more importantly the max temperatures recorded in the months are increasing more drastically.
+```
+
+#Regression Part for Extra Credits
+
+```{r}
+#creating predictor and response variable for Linear Regression
+x <- global_land_temp$Year
+y <- global_land_temp$global_temp
+
+relation <- lm(y~x)
+print(summary(relation))
+
+# Plot the chart.
+plot(x,y,col = "blue",main = "Global Temperature and Year Regression",
+abline(relation),cex = 1.3,pch = 16,xlab = "year",ylab = "Global_Temperature")
+```
+
+```{r}
+#creating predictor and response variable for Linear Regression
+x1 <- monthly_averages$Month
+x2 <- monthly_averages$Month^2
+y <- monthly_averages$mean_monthly
+
+relation <- lm(y~x1+x2)
+print(summary(relation))
+
+# Plot the chart.
+monthValues <- seq(0, 12, 0.1)
+tempPredict <- predict(relation,list(x1=monthValues,x2=monthValues^2))
+plot(x1,y,col = "red",xlab = "Month",ylab = "Global_Temperature",main = "MeanTemperature and Month Regression")
+lines(monthValues,tempPredict, col = 'blue' )
+
+```
